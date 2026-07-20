@@ -140,32 +140,33 @@ export const LineupScreen: React.FC = () => {
         )}
       </div>
 
-      {/* RINK LAYOUT */}
+      {/* RINK LAYOUT (3x2 Grid) */}
       <div className="flex-1 flex flex-col items-center justify-center mb-8 relative">
-        <div className="w-[800px] h-[400px] bg-slate-900 border-4 border-slate-700 rounded-[100px] relative overflow-hidden flex flex-col justify-between pt-6 px-8 pb-0 box-glow-blue shadow-2xl">
+        <div className="w-[850px] h-[480px] bg-slate-900 border-4 border-slate-700 rounded-[80px] relative overflow-hidden flex flex-col justify-around py-6 px-10 box-glow-blue shadow-2xl">
           {/* Ice markings */}
           <div className="absolute left-1/2 top-0 bottom-0 w-2 bg-red-500/20 -translate-x-1/2 z-0" />
           <div className="absolute left-1/2 top-1/2 w-32 h-32 border-2 border-red-500/20 rounded-full -translate-x-1/2 -translate-y-1/2 z-0" />
 
-          <div className="flex justify-around relative z-10 w-full">
+          {/* Top Row: Forwards */}
+          <div className="flex justify-between relative z-10 w-full px-4">
             {FORWARD_POSITIONS.map(pos => (
               <LineupSlotUI key={pos} position={pos} player={player} onRemove={() => handleRemoveCard(pos)} />
             ))}
           </div>
 
-          {/* Defense slots shifted left to leave centre-right clear for goalie crease */}
-          <div className="flex justify-center gap-24 relative z-10 w-full -translate-x-16 mb-2">
+          {/* Bottom Row: Defense 1, Defense 2, and Goalie under Forward 3 */}
+          <div className="flex justify-between items-center relative z-10 w-full px-4">
             {DEFENSE_POSITIONS.map(pos => (
               <LineupSlotUI key={pos} position={pos} player={player} onRemove={() => handleRemoveCard(pos)} />
             ))}
-          </div>
-        </div>
 
-        {/* Goalie Area — sits below the rink, centred */}
-        <div className="mt-3 flex flex-col items-center relative">
-          <div className="bg-red-500/20 w-48 h-10 rounded-t-full border-t-2 border-red-500/50 absolute top-0 left-1/2 -translate-x-1/2 -z-10" />
-          <div className="z-10 bg-slate-900 border-2 border-slate-700 p-2 rounded-xl scale-75 origin-top shadow-xl">
-            <CardDisplay card={player.goalie!} />
+            {/* Goalie Area aligned directly under Forward 3 */}
+            <div className="relative group w-32 h-44 flex items-center justify-center">
+              <div className="bg-red-500/20 w-36 h-8 rounded-t-full border-t-2 border-red-500/50 absolute top-0 left-1/2 -translate-x-1/2 z-0" />
+              <div className="z-10 scale-75 origin-top absolute top-0 left-0 w-48">
+                {player.goalie && <CardDisplay card={player.goalie} />}
+              </div>
+            </div>
           </div>
         </div>
       </div>
