@@ -1,23 +1,5 @@
 import React from 'react';
-import { Card } from '@/game/types';
 import { cn } from '@/lib/utils';
-
-interface CardDisplayProps {
-  card: Card;
-  selected?: boolean;
-  faceDown?: boolean;
-  className?: string;
-  onClick?: () => void;
-}
-
-// Map card categories directly to your assets in public/assets/cards/
-const CATEGORY_BACKGROUNDS: Record<string, string> = {
-  forward: '/assets/cards/bg_forward.png',
-  defenseman: '/assets/cards/bg_defense.png',
-  goalie: '/assets/cards/bg_goalie.png',
-  rookie: '/assets/cards/bg_rookie.png',
-  penalty: '/assets/cards/bg_penalty.png',
-};
 
 // Helper to handle Vite / GitHub Pages subpaths cleanly
 const getAssetUrl = (path: string) => {
@@ -26,118 +8,94 @@ const getAssetUrl = (path: string) => {
   return `${baseUrl}${cleanPath}`;
 };
 
-export const CardDisplay: React.FC<CardDisplayProps> = ({
-  card,
-  selected,
-  faceDown,
-  className,
-  onClick,
-}) => {
-  if (faceDown) {
-    return (
-      <div
-        onClick={onClick}
-        className={cn(
-          'w-48 h-64 rounded-xl bg-slate-800 border-2 border-slate-600 flex flex-col items-center justify-center p-4 shadow-xl cursor-pointer select-none relative overflow-hidden',
-          className
-        )}
-      >
-        <img
-          src={getAssetUrl('/assets/cards/cardback.png')}
-          alt="Card Back"
-          className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
-          onError={(e) => {
-            (e.target as HTMLElement).style.display = 'none';
-          }}
-        />
-        <div className="z-10 bg-slate-950/80 px-3 py-1 rounded border border-slate-700">
-          <span className="font-display text-xl font-bold text-slate-300 uppercase tracking-widest">
-            Rookie
-          </span>
-        </div>
-      </div>
-    );
+interface DieDisplayProps {
+  die?: any;
+  face?: any;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+  className?: string;
+  onClick?: () => void;
+  [key: string]: any;
+}
+
+export const DieDisplay: React.FC<DieDisplayProps> = (props) => {
+  const { size = 'lg', className, onClick } = props;
+
+  // Extract die object from props
+  const dieObj = props.die || props.face || props;
+
+  let rawValue = '';
+  let pips: number | string | null = null;
+
+  if (typeof dieObj === 'string') {
+    rawValue = dieObj;
+  } else if (dieObj && typeof dieObj === 'object') {
+    // Extract face name
+    const faceVal = dieObj.face || dieObj.currentFace || dieObj.result || dieObj.rolledFace || dieObj.value || dieObj.type;
+    
+    if (typeof faceVal === 'string') {
+      rawValue = faceVal;
+    } else if (faceVal && typeof faceVal === 'object') {
+      rawValue = faceVal.type || faceVal.symbol || faceVal.name || faceVal.face || '';
+      pips = faceVal.pips ?? faceVal.amount ?? faceVal.value ?? null;
+    }
+
+    // Check direct pip properties if not found inside nested face
+    if (pips === null) {
+      pips = dieObj.pips ?? dieObj.pipCount ?? dieObj.amount ?? dieObj.value ?? null;
+    }
   }
 
-  const categoryColors = {
-    forward: 'border-blue-500 bg-slate-900 shadow-blue-900/20',
-    defenseman: 'border-red-500 bg-slate-900 shadow-red-900/20',
-    goalie: 'border-amber-500 bg-slate-900 shadow-amber-900/20',
-    rookie: 'border-slate-500 bg-slate-900 shadow-slate-900/20',
-    penalty: 'border-purple-500 bg-slate-900 shadow-purple-900/20',
-  };
+  const str = String(rawValue).toLowerCase().trim();
 
-  const badgeColors = {
-    forward: 'bg-blue-600 text-white',
-    defenseman: 'bg-red-600 text-white',
-    goalie: 'bg-amber-600 text-white',
-    rookie: 'bg-slate-600 text-white',
-    penalty: 'bg-purple-600 text-white',
-  };
+  // Map to face filenames
+  let faceKey = 'blank';
+  if (str.includes('shoot') || str.includes('s')) {
+    faceKey = 'shoot';
+  } else if (str.includes('block') || str.includes('b')) {
+    faceKey = 'block';
+  } else if (str.includes('energy') || str.includes('e')) {
+    faceKey = 'energy';
+  } else if (str.includes('wild') || str.includes('w')) {
+    faceKey = 'wild';
+  } else if (str.includes('shutout') || str.includes('so')) {
+    faceKey = 'shutout';
+  }
 
-  // Determine image: explicit card imageUrl OR category background fallback
-  const rawImagePath = card.imageUrl || CATEGORY_BACKGROUNDS[card.category] || CATEGORY_BACKGROUNDS.rookie;
-  const imageUrl = getAssetUrl(rawImagePath);
+  const imagePath = getAssetUrl(`/assets/dice/face_${faceKey}.png`);
+
+  // Restored larger sizing options
+  const sizeClasses = {
+    sm: 'w-10 h-10 text-xs',
+    md: 'w-14 h-14 text-sm',
+    lg: 'w-20 h-20 text-base',
+    xl: 'w-24 h-24 text-lg',
+  };
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        'w-48 h-64 rounded-xl border-2 flex flex-col justify-between p-3 shadow-xl cursor-pointer select-none relative overflow-hidden transition-all duration-200',
-        categoryColors[card.category] || 'border-slate-600 bg-slate-900',
-        selected && 'ring-4 ring-white scale-105 z-20',
+        'relative flex items-center justify-center rounded-xl bg-slate-950 border-2 border-slate-700 shadow-xl overflow-hidden shrink-0 cursor-pointer select-none transition-all hover:border-amber-400',
+        sizeClasses[size],
         className
       )}
     >
-      {/* Background Graphic */}
+      {/* Die Face Image */}
       <img
-        src={imageUrl}
-        alt={card.name}
-        className="absolute inset-0 w-full h-full object-cover opacity-80 z-0 pointer-events-none"
+        src={imagePath}
+        alt={`${faceKey} die face`}
+        className="w-full h-full object-contain p-1.5 pointer-events-none"
         onError={(e) => {
           (e.target as HTMLElement).style.display = 'none';
         }}
       />
 
-      {/* Card Header */}
-      <div className="flex items-start justify-between relative z-10">
-        <h4 className="font-display font-bold text-base text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-          {card.name}
-        </h4>
-        <span
-          className={cn(
-            'text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ml-1 shadow-md',
-            badgeColors[card.category] || 'bg-slate-700 text-white'
-          )}
-        >
-          {card.category === 'forward'
-            ? 'FWD'
-            : card.category === 'defenseman'
-            ? 'DEF'
-            : card.category === 'goalie'
-            ? 'G'
-            : card.category}
-        </span>
-      </div>
-
-      {/* Card Body / Ability */}
-      <div className="relative z-10 my-auto bg-slate-950/85 backdrop-blur-md border border-slate-700/60 rounded-lg p-2.5 shadow-lg">
-        <p className="text-xs text-slate-200 leading-snug italic text-center font-medium">
-          {card.abilities && card.abilities.length > 0
-            ? card.abilities.map(a => a.description).join(' ')
-            : 'No special ability.'}
-        </p>
-      </div>
-
-      {/* Card Footer / Tier */}
-      <div className="flex items-center justify-between relative z-10 text-[10px] text-slate-300 font-semibold border-t border-slate-700/80 pt-1 bg-slate-950/60 -mx-1 px-2 rounded-b">
-        <span>Tier {card.tier}</span>
-        {card.dieTypeId && (
-          <span className="font-mono text-amber-300">
-            {card.dieTypeId}
-          </span>
-        )}
-      </div>
+      {/* Pip Overlay Badge (if pips exist and are > 0) */}
+      {pips !== null && pips !== undefined && pips !== '' && (
+        <div className="absolute bottom-1 right-1 bg-amber-500 text-slate-950 font-extrabold font-mono rounded-md px-1.5 py-0.5 text-xs shadow-md border border-amber-300 leading-none z-10">
+          {pips}
+        </div>
+      )}
     </div>
   );
 };
