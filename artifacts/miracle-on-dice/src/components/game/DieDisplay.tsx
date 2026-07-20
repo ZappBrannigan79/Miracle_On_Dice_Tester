@@ -3,8 +3,10 @@ import { DieRoll } from '@/game/types';
 import { cn } from '@/lib/utils';
 
 export interface DieDisplayProps {
-  roll?: DieRoll;
-  rolls?: DieRoll[];
+  roll?: any;
+  rolls?: any[];
+  dice?: any[];
+  rollResults?: any[];
   index?: number;
   isSelected?: boolean;
   selectedIndices?: number[];
@@ -13,6 +15,7 @@ export interface DieDisplayProps {
   showCategoryBorder?: boolean;
   showLabel?: boolean;
   className?: string;
+  [key: string]: any; // Catch-all for extra screen props
 }
 
 // Color-coded borders by position category
@@ -32,18 +35,19 @@ const getCategoryBorder = (category?: string) => {
 };
 
 // Formats position tags (e.g. F1, F2, D1, Rookie, Goalie)
-const getDieLabel = (roll: DieRoll, index: number) => {
-  if (roll.sourceLabel) return roll.sourceLabel;
-  if (roll.category === 'forward') return `F${index + 1}`;
-  if (roll.category === 'defenseman') return `D${index + 1}`;
-  if (roll.category === 'rookie') return 'Rookie';
-  if (roll.category === 'goalie') return 'Goalie';
+const getDieLabel = (item: any, index: number) => {
+  if (item?.sourceLabel) return item.sourceLabel;
+  if (item?.positionLabel) return item.positionLabel;
+  if (item?.category === 'forward') return `F${index + 1}`;
+  if (item?.category === 'defenseman') return `D${index + 1}`;
+  if (item?.category === 'rookie') return 'Rookie';
+  if (item?.category === 'goalie') return 'Goalie';
   return `Die ${index + 1}`;
 };
 
-// Single Die Render Block
+// Single Die Component
 export const SingleDie: React.FC<{
-  roll: DieRoll;
+  roll: any;
   index?: number;
   isSelected?: boolean;
   onClick?: () => void;
@@ -57,14 +61,16 @@ export const SingleDie: React.FC<{
   showCategoryBorder = true,
   showLabel = true,
 }) => {
-  const category = roll.category || (roll as any).playerCategory;
+  if (!roll) return null;
+
+  const category = roll.category || roll.playerCategory || roll.typeCategory;
   const borderColor = showCategoryBorder ? getCategoryBorder(category) : 'border-amber-400';
   const label = getDieLabel(roll, index);
 
-  // Suppress "0" pip display on blank or zero-pip faces to avoid "Block 0"
-  const val = typeof roll.value === 'number' ? roll.value : 0;
+  // Pip check: suppress "0" badges to prevent "Block 0"
+  const val = typeof roll.value === 'number' ? roll.value : typeof roll.pips === 'number' ? roll.pips : 0;
   const displayValue = val > 0 ? val : '';
-  const dieType = roll.type || (roll as any).faceType || '';
+  const dieType = roll.type || roll.faceType || roll.faceName || '';
 
   return (
     <div
@@ -80,9 +86,9 @@ export const SingleDie: React.FC<{
         )}
       >
         {/* Face Graphic or Text Fallback */}
-        {roll.faceImage || (roll as any).image ? (
+        {roll.faceImage || roll.image || roll.icon ? (
           <img
-            src={roll.faceImage || (roll as any).image}
+            src={roll.faceImage || roll.image || roll.icon}
             alt={dieType}
             className="w-full h-full object-cover rounded-lg"
           />
@@ -110,11 +116,13 @@ export const SingleDie: React.FC<{
   );
 };
 
-// Primary DieDisplay Component (Supports both array of rolls and single roll)
+// Main DieDisplay Component
 export const DieDisplay: React.FC<DieDisplayProps> = (props) => {
   const {
     rolls,
     roll,
+    dice,
+    rollResults,
     onDieClick,
     onClick,
     selectedIndices = [],
@@ -125,16 +133,22 @@ export const DieDisplay: React.FC<DieDisplayProps> = (props) => {
     className,
   } = props;
 
-  if (rolls && rolls.length > 0) {
+  // Gather list from any potential prop array passed in
+  const list = rolls || dice || rollResults || (roll ? [roll] : []);
+
+  if (list && list.length > 0) {
     return (
       <div className={cn('flex flex-wrap gap-4 items-center justify-start py-2', className)}>
-        {rolls.map((r, idx) => (
+        {list.map((r, idx) => (
           <SingleDie
             key={idx}
             roll={r}
             index={idx}
             isSelected={selectedIndices.includes(idx)}
-            onClick={() => onDieClick && onDieClick(idx)}
+            onClick={() => {
+              if (onDieClick) onDieClick(idx);
+              if (onClick) onClick();
+            }}
             showCategoryBorder={showCategoryBorder}
             showLabel={showLabel}
           />
@@ -143,6 +157,7 @@ export const DieDisplay: React.FC<DieDisplayProps> = (props) => {
     );
   }
 
+  // Fallback for direct single roll prop
   if (roll) {
     return (
       <SingleDie
