@@ -1,7 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-// Helper to append GitHub Pages base path (/Miracle_On_Dice_Tester/)
 const getAssetUrl = (path: string) => {
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
@@ -9,7 +8,7 @@ const getAssetUrl = (path: string) => {
 };
 
 interface DieDisplayProps {
-  face: string;
+  face: any; // Accepting any structure (string or object)
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   onClick?: () => void;
@@ -21,8 +20,16 @@ export const DieDisplay: React.FC<DieDisplayProps> = ({
   className,
   onClick,
 }) => {
-  // Normalize the face string to lowercase and strip pips/numbers if any exist (e.g., "SHOOT_2" -> "shoot")
-  const rawFace = String(face || '').toLowerCase().trim();
+  // Extract string value if 'face' is an object (e.g. { type: 'shoot' } or { face: 'SHOOT' } or { result: 'SHOOT' })
+  let faceString = '';
+
+  if (typeof face === 'string') {
+    faceString = face;
+  } else if (typeof face === 'object' && face !== null) {
+    faceString = face.type || face.face || face.result || face.name || face.value || JSON.stringify(face);
+  }
+
+  const rawFace = String(faceString).toLowerCase().trim();
 
   let faceKey = 'blank';
 
@@ -60,7 +67,6 @@ export const DieDisplay: React.FC<DieDisplayProps> = ({
         alt={`${faceKey} die face`}
         className="w-full h-full object-contain p-1 pointer-events-none"
         onError={(e) => {
-          // If image fails, hide it gracefully
           (e.target as HTMLElement).style.display = 'none';
         }}
       />
