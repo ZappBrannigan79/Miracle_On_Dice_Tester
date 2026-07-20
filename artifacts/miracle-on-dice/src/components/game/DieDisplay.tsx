@@ -1,18 +1,21 @@
 import React from 'react';
-import { DieRoll, PlayerCategory } from '@/game/types';
 import { cn } from '@/lib/utils';
 
-interface DiceDisplayProps {
-  rolls: DieRoll[];
+interface DieDisplayProps {
+  rolls?: any[];
+  roll?: any;
   onDieClick?: (index: number) => void;
   selectedIndices?: number[];
+  onClick?: () => void;
+  selected?: boolean;
 }
 
-export const DiceDisplay: React.FC<DiceDisplayProps> = ({
-  rolls,
-  onDieClick,
-  selectedIndices = [],
-}) => {
+export const DieDisplay: React.FC<DieDisplayProps> = (props) => {
+  const { rolls, roll, onDieClick, selectedIndices = [], onClick, selected } = props;
+
+  // Handle single die vs array of rolls
+  const diceList = rolls ? rolls : roll ? [roll] : [];
+
   // Border color based on player category
   const getCategoryBorder = (category?: string) => {
     switch (category) {
@@ -30,33 +33,36 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({
   };
 
   // Label text formatting (e.g., F1, D2, Goalie, Rookie)
-  const getDieLabel = (roll: any, index: number) => {
-    if (roll.sourceLabel) return roll.sourceLabel;
-    if (roll.category === 'forward') return `F${index + 1}`;
-    if (roll.category === 'defenseman') return `D${index + 1}`;
-    if (roll.category === 'rookie') return 'Rookie';
-    if (roll.category === 'goalie') return 'Goalie';
+  const getDieLabel = (item: any, index: number) => {
+    if (item?.sourceLabel) return item.sourceLabel;
+    if (item?.category === 'forward') return `F${index + 1}`;
+    if (item?.category === 'defenseman') return `D${index + 1}`;
+    if (item?.category === 'rookie') return 'Rookie';
+    if (item?.category === 'goalie') return 'Goalie';
     return `Die ${index + 1}`;
   };
 
   return (
     <div className="flex flex-wrap gap-4 items-center justify-start py-2">
-      {rolls.map((roll: any, idx: number) => {
-        const isSelected = selectedIndices.includes(idx);
-        const category = roll.category || roll.playerCategory;
+      {diceList.map((item: any, idx: number) => {
+        const isSelected = selected || selectedIndices.includes(idx);
+        const category = item?.category || item?.playerCategory;
         const borderColor = getCategoryBorder(category);
-        const label = getDieLabel(roll, idx);
+        const label = getDieLabel(item, idx);
 
-        // Value check: don't render 0-pip badges
-        const val = typeof roll.value === 'number' ? roll.value : 0;
+        // Value check: suppress 0-pip badges (fixes "Block 0")
+        const val = typeof item?.value === 'number' ? item.value : 0;
         const displayValue = val > 0 ? val : '';
-        const dieType = roll.type || roll.faceType || '';
+        const dieType = item?.type || item?.faceType || '';
 
         return (
           <div
             key={idx}
             className="flex flex-col items-center gap-1 cursor-pointer group"
-            onClick={() => onDieClick && onDieClick(idx)}
+            onClick={() => {
+              if (onDieClick) onDieClick(idx);
+              if (onClick) onClick();
+            }}
           >
             {/* Die Box with Color-Coded Border */}
             <div
@@ -68,9 +74,9 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({
               )}
             >
               {/* Image / Face Icon */}
-              {roll.faceImage || roll.image ? (
+              {item?.faceImage || item?.image ? (
                 <img
-                  src={roll.faceImage || roll.image}
+                  src={item.faceImage || item.image}
                   alt={dieType}
                   className="w-full h-full object-cover rounded-lg"
                 />
@@ -98,3 +104,5 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({
     </div>
   );
 };
+
+export default DieDisplay;
