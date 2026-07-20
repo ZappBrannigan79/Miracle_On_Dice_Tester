@@ -1,143 +1,170 @@
 import React from 'react';
-import { Card } from '@/game/types';
+import { Card as GameCard } from '@/game/types';
+import { CARD_BG_IMAGES } from '@/game/assets';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { Coins, ArrowLeftRight } from 'lucide-react';
 
 interface CardDisplayProps {
-  card: Card;
-  selected?: boolean;
-  faceDown?: boolean;
-  className?: string;
+  card: GameCard;
   onClick?: () => void;
+  className?: string;
+  faceDown?: boolean;
+  compact?: boolean;
+  selected?: boolean;
 }
 
-// Map card categories directly to your assets in public/assets/cards/
-const CATEGORY_BACKGROUNDS: Record<string, string> = {
-  forward: '/assets/cards/bg_forward.png',
-  defenseman: '/assets/cards/bg_defense.png',
-  goalie: '/assets/cards/bg_goalie.png',
-  rookie: '/assets/cards/bg_rookie.png',
-  penalty: '/assets/cards/bg_penalty.png',
+const tierLabel = (card: GameCard) => {
+  if (card.category === 'penalty') return 'PEN';
+  if (card.category === 'rookie')  return 'RK';
+  if (card.isStarter)              return 'STR';
+  return card.dieTypeId; // F2, D3, GS, etc.
 };
 
-// Helper to handle Vite / GitHub Pages subpaths cleanly
-const getAssetUrl = (path: string) => {
-  const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${baseUrl}${cleanPath}`;
+const abilityTimingLabel: Record<string, string> = {
+  initial_reveal: 'Initial Reveal',
+  final_reveal:   'Final Reveal',
+  on_score:       'On Score',
+  on_block:       'On Block',
+  passive:        'Passive',
+};
+
+const timingColor: Record<string, string> = {
+  initial_reveal: 'text-sky-400',
+  final_reveal:   'text-amber-400',
+  on_score:       'text-green-400',
+  on_block:       'text-blue-400',
+  passive:        'text-slate-400',
 };
 
 export const CardDisplay: React.FC<CardDisplayProps> = ({
-  card,
-  selected,
-  faceDown,
-  className,
-  onClick,
+  card, onClick, className, faceDown, compact = false, selected,
 }) => {
+  const bgImage = CARD_BG_IMAGES[card.category] ?? CARD_BG_IMAGES['rookie'];
+
+  /* ── Face-down: show card back ── */
   if (faceDown) {
     return (
-      <div
+      <motion.div
+        data-testid={`card-facedown`}
+        whileHover={onClick ? { y: -4, scale: 1.03 } : {}}
         onClick={onClick}
         className={cn(
-          'w-48 h-64 rounded-xl bg-slate-800 border-2 border-slate-600 flex flex-col items-center justify-center p-4 shadow-xl cursor-pointer select-none relative overflow-hidden',
-          className
+          'rounded-xl overflow-hidden shadow-lg relative',
+          compact ? 'w-24 h-36' : 'w-40 h-56',
+          onClick && 'cursor-pointer',
+          selected && 'ring-2 ring-white',
+          className,
         )}
       >
         <img
-          src={getAssetUrl('/assets/cards/cardback.png')}
-          alt="Card Back"
-          className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
-          onError={(e) => {
-            (e.target as HTMLElement).style.display = 'none';
-          }}
+          src={CARD_BG_IMAGES['cardback']}
+          alt="Card back"
+          className="absolute inset-0 w-full h-full object-cover"
+          draggable={false}
         />
-        <div className="z-10 bg-slate-950/80 px-3 py-1 rounded border border-slate-700">
-          <span className="font-display text-xl font-bold text-slate-300 uppercase tracking-widest">
-            Rookie
-          </span>
-        </div>
-      </div>
+      </motion.div>
     );
   }
 
-  const categoryColors = {
-    forward: 'border-blue-500 bg-slate-900 shadow-blue-900/20',
-    defenseman: 'border-red-500 bg-slate-900 shadow-red-900/20',
-    goalie: 'border-amber-500 bg-slate-900 shadow-amber-900/20',
-    rookie: 'border-slate-500 bg-slate-900 shadow-slate-900/20',
-    penalty: 'border-purple-500 bg-slate-900 shadow-purple-900/20',
-  };
-
-  const badgeColors = {
-    forward: 'bg-blue-600 text-white',
-    defenseman: 'bg-red-600 text-white',
-    goalie: 'bg-amber-600 text-white',
-    rookie: 'bg-slate-600 text-white',
-    penalty: 'bg-purple-600 text-white',
-  };
-
-  // Determine image: explicit card imageUrl OR category background fallback
-  const rawImagePath = card.imageUrl || CATEGORY_BACKGROUNDS[card.category] || CATEGORY_BACKGROUNDS.rookie;
-  const imageUrl = getAssetUrl(rawImagePath);
+  /* ── Face-up card ── */
+  const borderGlow = {
+    forward:    'ring-blue-600 shadow-blue-900/50',
+    defenseman: 'ring-red-600 shadow-red-900/50',
+    goalie:     'ring-slate-500 shadow-slate-900/50',
+    rookie:     'ring-slate-700 shadow-slate-900/30',
+    penalty:    'ring-red-800 shadow-red-950/80',
+  }[card.category];
 
   return (
-    <div
+    <motion.div
+      data-testid={`card-${card.id}`}
+      whileHover={onClick ? { y: -5, scale: 1.03 } : {}}
       onClick={onClick}
       className={cn(
-        'w-48 h-64 rounded-xl border-2 flex flex-col justify-between p-3 shadow-xl cursor-pointer select-none relative overflow-hidden transition-all duration-200',
-        categoryColors[card.category] || 'border-slate-600 bg-slate-900',
-        selected && 'ring-4 ring-white scale-105 z-20',
-        className
+        'rounded-xl overflow-hidden shadow-xl relative flex flex-col ring-2',
+        compact ? 'w-24 h-36' : 'w-40 h-56',
+        borderGlow,
+        onClick && 'cursor-pointer',
+        selected && 'ring-white scale-105',
+        className,
       )}
     >
-      {/* Background Graphic */}
+      {/* Card background art */}
       <img
-        src={imageUrl}
-        alt={card.name}
-        className="absolute inset-0 w-full h-full object-cover opacity-80 z-0 pointer-events-none"
-        onError={(e) => {
-          (e.target as HTMLElement).style.display = 'none';
-        }}
+        src={bgImage}
+        alt={card.category}
+        className="absolute inset-0 w-full h-full object-cover"
+        draggable={false}
       />
 
-      {/* Card Header */}
-      <div className="flex items-start justify-between relative z-10">
-        <h4 className="font-display font-bold text-base text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-          {card.name}
-        </h4>
-        <span
-          className={cn(
-            'text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ml-1 shadow-md',
-            badgeColors[card.category] || 'bg-slate-700 text-white'
-          )}
-        >
-          {card.category === 'forward'
-            ? 'FWD'
-            : card.category === 'defenseman'
-            ? 'DEF'
-            : card.category === 'goalie'
-            ? 'G'
-            : card.category}
-        </span>
-      </div>
+      {/* Dark gradient overlay so text is readable */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-black/80" />
 
-      {/* Card Body / Ability */}
-      <div className="relative z-10 my-auto bg-slate-950/85 backdrop-blur-md border border-slate-700/60 rounded-lg p-2.5 shadow-lg">
-        <p className="text-xs text-slate-200 leading-snug italic text-center font-medium">
-          {card.abilities && card.abilities.length > 0
-            ? card.abilities.map(a => a.description).join(' ')
-            : 'No special ability.'}
-        </p>
-      </div>
-
-      {/* Card Footer / Tier */}
-      <div className="flex items-center justify-between relative z-10 text-[10px] text-slate-300 font-semibold border-t border-slate-700/80 pt-1 bg-slate-950/60 -mx-1 px-2 rounded-b">
-        <span>Tier {card.tier}</span>
-        {card.dieTypeId && (
-          <span className="font-mono text-amber-300">
-            {card.dieTypeId}
+      {/* Content */}
+      <div className="relative z-10 flex flex-col h-full p-1.5">
+        {/* Top row: name + die type */}
+        <div className="flex items-start justify-between gap-1 mb-0.5">
+          <div className="flex-1 min-w-0">
+            <p className={cn(
+              'font-display font-black leading-tight text-white drop-shadow-[0_1px_3px_rgba(0,0,0,1)]',
+              compact ? 'text-[9px]' : 'text-xs',
+            )}>
+              {card.name}
+            </p>
+          </div>
+          <span className={cn(
+            'font-mono font-bold text-white/90 bg-black/60 rounded px-0.5 shrink-0 leading-none',
+            compact ? 'text-[8px]' : 'text-[10px]',
+          )}>
+            {tierLabel(card)}
           </span>
+        </div>
+
+        {/* Cost / trade (hidden in compact) */}
+        {!compact && card.cost > 0 && (
+          <div className="flex gap-1.5 mb-1">
+            <span className="flex items-center gap-0.5 text-[9px] font-bold text-yellow-300 bg-black/60 rounded px-1 py-0.5">
+              <Coins className="w-2.5 h-2.5" />{card.cost}
+            </span>
+            <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-400 bg-black/60 rounded px-1 py-0.5">
+              <ArrowLeftRight className="w-2.5 h-2.5" />{card.tradeValue}
+            </span>
+          </div>
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Abilities panel at the bottom */}
+        {card.abilities.length > 0 && (
+          <div className={cn(
+            'bg-black/75 rounded-lg p-1 space-y-0.5',
+            compact && 'hidden',
+          )}>
+            {card.abilities.map((ab, i) => (
+              <div key={i}>
+                <span className={cn(
+                  'text-[8px] font-bold uppercase tracking-wide block',
+                  timingColor[ab.when] ?? 'text-slate-400',
+                )}>
+                  {abilityTimingLabel[ab.when] ?? ab.when}:
+                </span>
+                <p className="text-[9px] text-slate-200 italic leading-tight">
+                  {ab.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* No ability cards */}
+        {card.abilities.length === 0 && !compact && (
+          <div className="bg-black/60 rounded-lg px-1.5 py-1 text-center">
+            <p className="text-[9px] text-slate-400 italic">No special ability.</p>
+          </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
