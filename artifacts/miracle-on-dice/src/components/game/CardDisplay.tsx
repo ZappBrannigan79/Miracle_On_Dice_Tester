@@ -10,10 +10,17 @@ interface CardDisplayProps {
   onClick?: () => void;
 }
 
-// Helper to resolve asset paths cleanly on GitHub Pages
-const getAssetUrl = (path: string | undefined) => {
-  if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+// Map card categories directly to your assets in public/assets/cards/
+const CATEGORY_BACKGROUNDS: Record<string, string> = {
+  forward: '/assets/cards/bg_forward.png',
+  defenseman: '/assets/cards/bg_defense.png',
+  goalie: '/assets/cards/bg_goalie.png',
+  rookie: '/assets/cards/bg_rookie.png',
+  penalty: '/assets/cards/bg_penalty.png',
+};
+
+// Helper to handle Vite / GitHub Pages subpaths cleanly
+const getAssetUrl = (path: string) => {
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${baseUrl}${cleanPath}`;
@@ -35,8 +42,16 @@ export const CardDisplay: React.FC<CardDisplayProps> = ({
           className
         )}
       >
-        <div className="w-full h-full border border-slate-700/50 rounded-lg flex items-center justify-center bg-slate-900/50">
-          <span className="font-display text-2xl font-bold text-slate-500 uppercase tracking-widest">
+        <img
+          src={getAssetUrl('/assets/cards/cardback.png')}
+          alt="Card Back"
+          className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+          onError={(e) => {
+            (e.target as HTMLElement).style.display = 'none';
+          }}
+        />
+        <div className="z-10 bg-slate-950/80 px-3 py-1 rounded border border-slate-700">
+          <span className="font-display text-xl font-bold text-slate-300 uppercase tracking-widest">
             Rookie
           </span>
         </div>
@@ -45,11 +60,11 @@ export const CardDisplay: React.FC<CardDisplayProps> = ({
   }
 
   const categoryColors = {
-    forward: 'border-blue-600 bg-slate-900 shadow-blue-900/20',
-    defenseman: 'border-red-600 bg-slate-900 shadow-red-900/20',
-    goalie: 'border-amber-600 bg-slate-900 shadow-amber-900/20',
-    rookie: 'border-slate-600 bg-slate-900 shadow-slate-900/20',
-    penalty: 'border-purple-600 bg-slate-900 shadow-purple-900/20',
+    forward: 'border-blue-500 bg-slate-900 shadow-blue-900/20',
+    defenseman: 'border-red-500 bg-slate-900 shadow-red-900/20',
+    goalie: 'border-amber-500 bg-slate-900 shadow-amber-900/20',
+    rookie: 'border-slate-500 bg-slate-900 shadow-slate-900/20',
+    penalty: 'border-purple-500 bg-slate-900 shadow-purple-900/20',
   };
 
   const badgeColors = {
@@ -60,7 +75,9 @@ export const CardDisplay: React.FC<CardDisplayProps> = ({
     penalty: 'bg-purple-600 text-white',
   };
 
-  const imageUrl = getAssetUrl(card.imageUrl);
+  // Determine image: explicit card imageUrl OR category background fallback
+  const rawImagePath = card.imageUrl || CATEGORY_BACKGROUNDS[card.category] || CATEGORY_BACKGROUNDS.rookie;
+  const imageUrl = getAssetUrl(rawImagePath);
 
   return (
     <div
@@ -72,27 +89,24 @@ export const CardDisplay: React.FC<CardDisplayProps> = ({
         className
       )}
     >
-      {/* Background Graphic / Image */}
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={card.name}
-          className="absolute inset-0 w-full h-full object-cover opacity-30 z-0 pointer-events-none"
-          onError={(e) => {
-            // Hide broken image gracefully if file is missing
-            (e.target as HTMLElement).style.display = 'none';
-          }}
-        />
-      )}
+      {/* Background Graphic */}
+      <img
+        src={imageUrl}
+        alt={card.name}
+        className="absolute inset-0 w-full h-full object-cover opacity-80 z-0 pointer-events-none"
+        onError={(e) => {
+          (e.target as HTMLElement).style.display = 'none';
+        }}
+      />
 
       {/* Card Header */}
       <div className="flex items-start justify-between relative z-10">
-        <h4 className="font-display font-bold text-lg text-white leading-tight drop-shadow-md">
+        <h4 className="font-display font-bold text-base text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
           {card.name}
         </h4>
         <span
           className={cn(
-            'text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ml-1',
+            'text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ml-1 shadow-md',
             badgeColors[card.category] || 'bg-slate-700 text-white'
           )}
         >
@@ -107,21 +121,23 @@ export const CardDisplay: React.FC<CardDisplayProps> = ({
       </div>
 
       {/* Card Body / Ability */}
-      <div className="relative z-10 my-auto bg-slate-950/70 backdrop-blur-sm border border-slate-800 rounded-lg p-2">
-        <p className="text-xs text-slate-300 leading-snug italic text-center">
-          {card.ability || 'No special ability.'}
+      <div className="relative z-10 my-auto bg-slate-950/85 backdrop-blur-md border border-slate-700/60 rounded-lg p-2.5 shadow-lg">
+        <p className="text-xs text-slate-200 leading-snug italic text-center font-medium">
+          {card.abilities && card.abilities.length > 0
+            ? card.abilities.map(a => a.description).join(' ')
+            : 'No special ability.'}
         </p>
       </div>
 
       {/* Card Footer / Tier */}
-      <div className="flex items-center justify-between relative z-10 text-[10px] text-slate-400 border-t border-slate-800/80 pt-1">
+      <div className="flex items-center justify-between relative z-10 text-[10px] text-slate-300 font-semibold border-t border-slate-700/80 pt-1 bg-slate-950/60 -mx-1 px-2 rounded-b">
         <span>Tier {card.tier}</span>
-        {card.diceProfile && (
-          <span className="font-mono text-slate-300 font-semibold">
-            {card.diceProfile}
+        {card.dieTypeId && (
+          <span className="font-mono text-amber-300">
+            {card.dieTypeId}
           </span>
         )}
       </div>
     </div>
   );
-}
+};
