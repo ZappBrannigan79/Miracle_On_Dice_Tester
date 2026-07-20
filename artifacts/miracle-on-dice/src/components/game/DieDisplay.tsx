@@ -14,7 +14,7 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({
   selectedIndices = [],
 }) => {
   // Border color based on player category
-  const getCategoryBorder = (category?: PlayerCategory) => {
+  const getCategoryBorder = (category?: string) => {
     switch (category) {
       case 'forward':
         return 'border-blue-500 shadow-blue-500/30';
@@ -30,7 +30,7 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({
   };
 
   // Label text formatting (e.g., F1, D2, Goalie, Rookie)
-  const getDieLabel = (roll: DieRoll, index: number) => {
+  const getDieLabel = (roll: any, index: number) => {
     if (roll.sourceLabel) return roll.sourceLabel;
     if (roll.category === 'forward') return `F${index + 1}`;
     if (roll.category === 'defenseman') return `D${index + 1}`;
@@ -41,13 +41,16 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({
 
   return (
     <div className="flex flex-wrap gap-4 items-center justify-start py-2">
-      {rolls.map((roll, idx) => {
+      {rolls.map((roll: any, idx: number) => {
         const isSelected = selectedIndices.includes(idx);
-        const borderColor = getCategoryBorder(roll.category);
+        const category = roll.category || roll.playerCategory;
+        const borderColor = getCategoryBorder(category);
         const label = getDieLabel(roll, idx);
 
-        // Safeguard against "Block 0" or blank values
-        const displayValue = roll.value > 0 ? roll.value : '';
+        // Value check: don't render 0-pip badges
+        const val = typeof roll.value === 'number' ? roll.value : 0;
+        const displayValue = val > 0 ? val : '';
+        const dieType = roll.type || roll.faceType || '';
 
         return (
           <div
@@ -65,15 +68,15 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({
               )}
             >
               {/* Image / Face Icon */}
-              {roll.faceImage ? (
+              {roll.faceImage || roll.image ? (
                 <img
-                  src={roll.faceImage}
-                  alt={roll.type}
+                  src={roll.faceImage || roll.image}
+                  alt={dieType}
                   className="w-full h-full object-cover rounded-lg"
                 />
               ) : (
                 <span className="font-display font-bold text-lg text-white uppercase">
-                  {roll.type}
+                  {dieType}
                 </span>
               )}
 
@@ -87,7 +90,7 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({
 
             {/* Position Label below the die */}
             <span className="text-xs font-mono font-semibold tracking-wider text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">
-              {label} {displayValue ? `(${displayValue}${roll.type[0].toUpperCase()})` : ''}
+              {label} {displayValue && dieType ? `(${displayValue}${dieType[0]?.toUpperCase()})` : ''}
             </span>
           </div>
         );
