@@ -11,41 +11,44 @@ const getAssetUrl = (path: string) => {
 interface DieDisplayProps {
   die?: any;
   face?: any;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   onClick?: () => void;
   [key: string]: any;
 }
 
 export const DieDisplay: React.FC<DieDisplayProps> = (props) => {
-  const { size = 'md', className, onClick } = props;
+  const { size = 'lg', className, onClick } = props;
 
-  // Extract die data from either props.die, props.face, or props directly
+  // Extract die object from props
   const dieObj = props.die || props.face || props;
 
-  // Look across all possible property names for the face value
   let rawValue = '';
+  let pips: number | string | null = null;
 
   if (typeof dieObj === 'string') {
     rawValue = dieObj;
   } else if (dieObj && typeof dieObj === 'object') {
-    // If face/result is a nested object (e.g. { type: 'shoot', pips: 2 }) or string
+    // Extract face name
     const faceVal = dieObj.face || dieObj.currentFace || dieObj.result || dieObj.rolledFace || dieObj.value || dieObj.type;
     
     if (typeof faceVal === 'string') {
       rawValue = faceVal;
     } else if (faceVal && typeof faceVal === 'object') {
-      rawValue = faceVal.type || faceVal.symbol || faceVal.name || faceVal.face || JSON.stringify(faceVal);
-    } else {
-      rawValue = JSON.stringify(dieObj);
+      rawValue = faceVal.type || faceVal.symbol || faceVal.name || faceVal.face || '';
+      pips = faceVal.pips ?? faceVal.amount ?? faceVal.value ?? null;
+    }
+
+    // Check direct pip properties if not found inside nested face
+    if (pips === null) {
+      pips = dieObj.pips ?? dieObj.pipCount ?? dieObj.amount ?? dieObj.value ?? null;
     }
   }
 
   const str = String(rawValue).toLowerCase().trim();
 
-  // Map to face filenames in public/assets/dice/
+  // Map to face filenames
   let faceKey = 'blank';
-
   if (str.includes('shoot') || str.includes('s')) {
     faceKey = 'shoot';
   } else if (str.includes('block') || str.includes('b')) {
@@ -60,29 +63,39 @@ export const DieDisplay: React.FC<DieDisplayProps> = (props) => {
 
   const imagePath = getAssetUrl(`/assets/dice/face_${faceKey}.png`);
 
+  // Restored larger sizing options
   const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-12 h-12',
-    lg: 'w-16 h-16',
+    sm: 'w-10 h-10 text-xs',
+    md: 'w-14 h-14 text-sm',
+    lg: 'w-20 h-20 text-base',
+    xl: 'w-24 h-24 text-lg',
   };
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        'relative flex items-center justify-center rounded-lg bg-slate-950 border border-slate-700 shadow-md overflow-hidden shrink-0 cursor-pointer select-none',
+        'relative flex items-center justify-center rounded-xl bg-slate-950 border-2 border-slate-700 shadow-xl overflow-hidden shrink-0 cursor-pointer select-none transition-all hover:border-amber-400',
         sizeClasses[size],
         className
       )}
     >
+      {/* Die Face Image */}
       <img
         src={imagePath}
         alt={`${faceKey} die face`}
-        className="w-full h-full object-contain p-1 pointer-events-none"
+        className="w-full h-full object-contain p-1.5 pointer-events-none"
         onError={(e) => {
           (e.target as HTMLElement).style.display = 'none';
         }}
       />
+
+      {/* Pip Overlay Badge (if pips exist and are > 0) */}
+      {pips !== null && pips !== undefined && pips !== '' && (
+        <div className="absolute bottom-1 right-1 bg-amber-500 text-slate-950 font-extrabold font-mono rounded-md px-1.5 py-0.5 text-xs shadow-md border border-amber-300 leading-none z-10">
+          {pips}
+        </div>
+      )}
     </div>
   );
 };
