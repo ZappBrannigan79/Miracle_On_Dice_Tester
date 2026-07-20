@@ -1,25 +1,23 @@
 import React from 'react';
-import { DieRoll } from '@/game/types';
+import { RolledDie } from '@/game/types';
 import { cn } from '@/lib/utils';
 
 export interface DieDisplayProps {
-  roll?: any;
-  rolls?: any[];
-  dice?: any[];
-  rollResults?: any[];
-  index?: number;
-  isSelected?: boolean;
-  selectedIndices?: number[];
+  die?: RolledDie | any;
+  roll?: RolledDie | any;
   onClick?: () => void;
-  onDieClick?: (index: number) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  animateRoll?: boolean;
   showCategoryBorder?: boolean;
   showLabel?: boolean;
   className?: string;
-  [key: string]: any; // Catch-all for extra screen props
 }
 
-// Color-coded borders by position category
-const getCategoryBorder = (category?: string) => {
+// Category border styles based on player/die role
+const getCategoryBorder = (category?: string, isGoalie?: boolean) => {
+  if (isGoalie || category === 'goalie') return 'border-slate-400 shadow-slate-400/30';
   switch (category) {
     case 'forward':
       return 'border-blue-500 shadow-blue-500/30';
@@ -27,151 +25,104 @@ const getCategoryBorder = (category?: string) => {
       return 'border-red-500 shadow-red-500/30';
     case 'rookie':
       return 'border-slate-100 shadow-white/30';
-    case 'goalie':
-      return 'border-slate-400 shadow-slate-400/30';
     default:
       return 'border-amber-400 shadow-amber-400/30';
   }
 };
 
-// Formats position tags (e.g. F1, F2, D1, Rookie, Goalie)
-const getDieLabel = (item: any, index: number) => {
-  if (item?.sourceLabel) return item.sourceLabel;
-  if (item?.positionLabel) return item.positionLabel;
-  if (item?.category === 'forward') return `F${index + 1}`;
-  if (item?.category === 'defenseman') return `D${index + 1}`;
-  if (item?.category === 'rookie') return 'Rookie';
-  if (item?.category === 'goalie') return 'Goalie';
-  return `Die ${index + 1}`;
+// Formats position tags (e.g., F1, D1, Goalie)
+const getDieLabel = (d: any) => {
+  if (d?.sourceLabel) return d.sourceLabel;
+  if (d?.positionLabel) return d.positionLabel;
+  if (d?.isGoalie || d?.category === 'goalie') return 'Goalie';
+  if (d?.category === 'forward') return 'Forward';
+  if (d?.category === 'defenseman') return 'Defense';
+  if (d?.category === 'rookie') return 'Rookie';
+  return '';
 };
 
-// Single Die Component
-export const SingleDie: React.FC<{
-  roll: any;
-  index?: number;
-  isSelected?: boolean;
-  onClick?: () => void;
-  showCategoryBorder?: boolean;
-  showLabel?: boolean;
-}> = ({
+export const DieDisplay: React.FC<DieDisplayProps> = ({
+  die,
   roll,
-  index = 0,
-  isSelected = false,
   onClick,
+  selectable = false,
+  selected = false,
+  size = 'md',
   showCategoryBorder = true,
   showLabel = true,
+  className,
 }) => {
-  if (!roll) return null;
+  // Support either 'die' or 'roll' prop
+  const dieData = die || roll;
+  if (!dieData) return null;
 
-  const category = roll.category || roll.playerCategory || roll.typeCategory;
-  const borderColor = showCategoryBorder ? getCategoryBorder(category) : 'border-amber-400';
-  const label = getDieLabel(roll, index);
+  const face = dieData.face || dieData;
+  const value = face.value ?? dieData.value ?? 0;
+  const type = face.type || dieData.type || '';
+  const category = dieData.category || dieData.playerCategory;
+  const isGoalie = dieData.isGoalie || category === 'goalie';
 
-  // Pip check: suppress "0" badges to prevent "Block 0"
-  const val = typeof roll.value === 'number' ? roll.value : typeof roll.pips === 'number' ? roll.pips : 0;
-  const displayValue = val > 0 ? val : '';
-  const dieType = roll.type || roll.faceType || roll.faceName || '';
+  const borderColor = showCategoryBorder
+    ? getCategoryBorder(category, isGoalie)
+    : 'border-amber-400';
+
+  const positionLabel = getDieLabel(dieData);
+
+  // Sizing styles
+  const sizeClasses = {
+    sm: 'w-10 h-10 rounded-lg text-xs',
+    md: 'w-16 h-16 rounded-xl text-base',
+    lg: 'w-20 h-20 rounded-2xl text-lg',
+  }[size];
 
   return (
     <div
-      className="flex flex-col items-center gap-1 cursor-pointer group"
+      className={cn('flex flex-col items-center gap-1', selectable && 'cursor-pointer', className)}
       onClick={onClick}
     >
       <div
         className={cn(
-          'relative w-16 h-16 rounded-xl border-4 bg-slate-900 flex items-center justify-center transition-all duration-200 shadow-lg',
+          'relative border-4 bg-slate-900 flex items-center justify-center transition-all duration-200 shadow-lg select-none',
+          sizeClasses,
           borderColor,
-          isSelected && 'ring-4 ring-yellow-400 scale-105',
-          'group-hover:scale-105'
+          selected && 'ring-4 ring-yellow-400 scale-105',
+          selectable && 'hover:scale-105'
         )}
       >
-        {/* Face Graphic or Text Fallback */}
-        {roll.faceImage || roll.image || roll.icon ? (
+        {/* Face Image or Type Fallback */}
+        {face.image || face.icon || dieData.faceImage ? (
           <img
-            src={roll.faceImage || roll.image || roll.icon}
-            alt={dieType}
-            className="w-full h-full object-cover rounded-lg"
+            src={face.image || face.icon || dieData.faceImage}
+            alt={type}
+            className="w-full h-full object-cover rounded-md"
           />
         ) : (
-          <span className="font-display font-bold text-lg text-white uppercase">
-            {dieType}
+          <span className="font-display font-bold uppercase text-white tracking-wider">
+            {type}
           </span>
         )}
 
-        {/* Pip Badge (Hidden when displayValue is empty, preventing "Block 0") */}
-        {displayValue !== '' && (
-          <div className="absolute bottom-1 right-1 bg-amber-500 text-slate-950 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center shadow">
-            {displayValue}
+        {/* Pip Badge (Hides 0 pips) */}
+        {value > 0 && (
+          <div
+            className={cn(
+              'absolute bg-amber-500 text-slate-950 font-bold rounded-full flex items-center justify-center shadow',
+              size === 'sm' ? 'bottom-0.5 right-0.5 w-4 h-4 text-[10px]' : 'bottom-1 right-1 w-5 h-5 text-xs'
+            )}
+          >
+            {value}
           </div>
         )}
       </div>
 
-      {/* Position Tag Label below die */}
-      {showLabel && (
-        <span className="text-xs font-mono font-semibold tracking-wider text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">
-          {label} {displayValue && dieType ? `(${displayValue}${dieType[0]?.toUpperCase()})` : ''}
+      {/* Die Label */}
+      {showLabel && positionLabel && size !== 'sm' && (
+        <span className="text-[11px] font-mono font-semibold tracking-wider text-slate-300 bg-slate-800/90 px-1.5 py-0.5 rounded border border-slate-700">
+          {positionLabel}
         </span>
       )}
     </div>
   );
-};
-
-// Main DieDisplay Component
-export const DieDisplay: React.FC<DieDisplayProps> = (props) => {
-  const {
-    rolls,
-    roll,
-    dice,
-    rollResults,
-    onDieClick,
-    onClick,
-    selectedIndices = [],
-    isSelected = false,
-    index = 0,
-    showCategoryBorder = true,
-    showLabel = true,
-    className,
-  } = props;
-
-  // Gather list from any potential prop array passed in
-  const list = rolls || dice || rollResults || (roll ? [roll] : []);
-
-  if (list && list.length > 0) {
-    return (
-      <div className={cn('flex flex-wrap gap-4 items-center justify-start py-2', className)}>
-        {list.map((r, idx) => (
-          <SingleDie
-            key={idx}
-            roll={r}
-            index={idx}
-            isSelected={selectedIndices.includes(idx)}
-            onClick={() => {
-              if (onDieClick) onDieClick(idx);
-              if (onClick) onClick();
-            }}
-            showCategoryBorder={showCategoryBorder}
-            showLabel={showLabel}
-          />
-        ))}
-      </div>
-    );
-  }
-
-  // Fallback for direct single roll prop
-  if (roll) {
-    return (
-      <SingleDie
-        roll={roll}
-        index={index}
-        isSelected={isSelected}
-        onClick={onClick}
-        showCategoryBorder={showCategoryBorder}
-        showLabel={showLabel}
-      />
-    );
-  }
-
-  return null;
 };
 
 export default DieDisplay;
