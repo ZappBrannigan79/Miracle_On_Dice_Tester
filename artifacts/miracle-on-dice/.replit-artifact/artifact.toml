@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Miracle on Dice"
+version = "1.0.0"
+id = "artifacts/miracle-on-dice"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25548
+
+[services.development]
+run = "pnpm --filter @workspace/miracle-on-dice run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/miracle-on-dice", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/miracle-on-dice/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25548"
+BASE_PATH = "/"
