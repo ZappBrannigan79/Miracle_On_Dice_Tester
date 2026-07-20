@@ -88,15 +88,14 @@ export const LineupScreen: React.FC = () => {
     const card = player.hand.find(c => c.id === cardId);
     if (!card) return;
 
-    // Determine face-down logic:
-    // Natural positions play face-up; out-of-position or rookie plays face-down
     const isForwardSlot = FORWARD_POSITIONS.includes(position);
     const isDefenseSlot = DEFENSE_POSITIONS.includes(position);
 
     let faceDown = false;
-    if (card.category === 'rookie') {
-      faceDown = true;
-    } else if (card.category === 'forward' && !isForwardSlot) {
+
+    // Out-of-position veterans play face-down as makeshift rookies.
+    // Dedicated Rookie cards can play anywhere face-up!
+    if (card.category === 'forward' && !isForwardSlot) {
       faceDown = true;
     } else if (card.category === 'defenseman' && !isDefenseSlot) {
       faceDown = true;
@@ -160,9 +159,9 @@ export const LineupScreen: React.FC = () => {
         };
       case 'rookie':
         return {
-          naturalSlots: [],
-          rookieSlots: anyEmpty,
-          label: 'Rookie slot',
+          naturalSlots: anyEmpty,
+          rookieSlots: [],
+          label: 'Slot',
           canFaceDown: false,
         };
       default:
@@ -334,24 +333,6 @@ export const LineupScreen: React.FC = () => {
                     <span className="text-amber-400 text-xs italic">
                       No open {label.toLowerCase()}s —
                     </span>
-                  )}
-
-                  {selectedCard.category === 'rookie' && rookieSlots.length > 0 && (
-                    <>
-                      <span className="text-slate-500 text-xs uppercase tracking-wide">Place face-down at:</span>
-                      {rookieSlots.map(pos => (
-                        <Button
-                          key={pos}
-                          size="sm"
-                          variant="secondary"
-                          className="h-8 px-3 text-xs bg-slate-700 text-slate-200 hover:bg-slate-600"
-                          onClick={() => handlePlaceCard(selectedCard, pos, true)}
-                        >
-                          <EyeOff className="w-3 h-3 mr-1" />
-                          {pos.replace('_', ' ').replace('forward', 'F').replace('defense', 'D')}
-                        </Button>
-                      ))}
-                    </>
                   )}
 
                   {selectedCard.category !== 'rookie' && (canFaceDown || (naturalSlots.length === 0 && rookieSlots.length > 0)) && rookieSlots.length > 0 && (
