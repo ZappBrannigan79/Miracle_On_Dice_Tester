@@ -1,101 +1,97 @@
 import React from 'react';
+import { DieRoll, PlayerCategory } from '@/game/types';
 import { cn } from '@/lib/utils';
 
-// Helper to handle Vite / GitHub Pages subpaths cleanly
-const getAssetUrl = (path: string) => {
-  const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${baseUrl}${cleanPath}`;
-};
-
-interface DieDisplayProps {
-  die?: any;
-  face?: any;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  className?: string;
-  onClick?: () => void;
-  [key: string]: any;
+interface DiceDisplayProps {
+  rolls: DieRoll[];
+  onDieClick?: (index: number) => void;
+  selectedIndices?: number[];
 }
 
-export const DieDisplay: React.FC<DieDisplayProps> = (props) => {
-  const { size = 'lg', className, onClick } = props;
-
-  // Extract die object from props
-  const dieObj = props.die || props.face || props;
-
-  let rawValue = '';
-  let pips: number | string | null = null;
-
-  if (typeof dieObj === 'string') {
-    rawValue = dieObj;
-  } else if (dieObj && typeof dieObj === 'object') {
-    // Extract face name
-    const faceVal = dieObj.face || dieObj.currentFace || dieObj.result || dieObj.rolledFace || dieObj.value || dieObj.type;
-    
-    if (typeof faceVal === 'string') {
-      rawValue = faceVal;
-    } else if (faceVal && typeof faceVal === 'object') {
-      rawValue = faceVal.type || faceVal.symbol || faceVal.name || faceVal.face || '';
-      pips = faceVal.pips ?? faceVal.amount ?? faceVal.value ?? null;
+export const DiceDisplay: React.FC<DiceDisplayProps> = ({
+  rolls,
+  onDieClick,
+  selectedIndices = [],
+}) => {
+  // Border color based on player category
+  const getCategoryBorder = (category?: PlayerCategory) => {
+    switch (category) {
+      case 'forward':
+        return 'border-blue-500 shadow-blue-500/30';
+      case 'defenseman':
+        return 'border-red-500 shadow-red-500/30';
+      case 'rookie':
+        return 'border-slate-100 shadow-white/30';
+      case 'goalie':
+        return 'border-slate-400 shadow-slate-400/30';
+      default:
+        return 'border-amber-400 shadow-amber-400/30';
     }
+  };
 
-    // Check direct pip properties if not found inside nested face
-    if (pips === null) {
-      pips = dieObj.pips ?? dieObj.pipCount ?? dieObj.amount ?? dieObj.value ?? null;
-    }
-  }
-
-  const str = String(rawValue).toLowerCase().trim();
-
-  // Map to face filenames
-  let faceKey = 'blank';
-  if (str.includes('shoot') || str.includes('s')) {
-    faceKey = 'shoot';
-  } else if (str.includes('block') || str.includes('b')) {
-    faceKey = 'block';
-  } else if (str.includes('energy') || str.includes('e')) {
-    faceKey = 'energy';
-  } else if (str.includes('wild') || str.includes('w')) {
-    faceKey = 'wild';
-  } else if (str.includes('shutout') || str.includes('so')) {
-    faceKey = 'shutout';
-  }
-
-  const imagePath = getAssetUrl(`/assets/dice/face_${faceKey}.png`);
-
-  // Restored larger sizing options
-  const sizeClasses = {
-    sm: 'w-10 h-10 text-xs',
-    md: 'w-14 h-14 text-sm',
-    lg: 'w-20 h-20 text-base',
-    xl: 'w-24 h-24 text-lg',
+  // Label text formatting (e.g., F1, D2, Goalie, Rookie)
+  const getDieLabel = (roll: DieRoll, index: number) => {
+    if (roll.sourceLabel) return roll.sourceLabel;
+    if (roll.category === 'forward') return `F${index + 1}`;
+    if (roll.category === 'defenseman') return `D${index + 1}`;
+    if (roll.category === 'rookie') return 'Rookie';
+    if (roll.category === 'goalie') return 'Goalie';
+    return `Die ${index + 1}`;
   };
 
   return (
-    <div
-      onClick={onClick}
-      className={cn(
-        'relative flex items-center justify-center rounded-xl bg-slate-950 border-2 border-slate-700 shadow-xl overflow-hidden shrink-0 cursor-pointer select-none transition-all hover:border-amber-400',
-        sizeClasses[size],
-        className
-      )}
-    >
-      {/* Die Face Image */}
-      <img
-        src={imagePath}
-        alt={`${faceKey} die face`}
-        className="w-full h-full object-contain p-1.5 pointer-events-none"
-        onError={(e) => {
-          (e.target as HTMLElement).style.display = 'none';
-        }}
-      />
+    <div className="flex flex-wrap gap-4 items-center justify-start py-2">
+      {rolls.map((roll, idx) => {
+        const isSelected = selectedIndices.includes(idx);
+        const borderColor = getCategoryBorder(roll.category);
+        const label = getDieLabel(roll, idx);
 
-      {/* Pip Overlay Badge (if pips exist and are > 0) */}
-      {pips !== null && pips !== undefined && pips !== '' && (
-        <div className="absolute bottom-1 right-1 bg-amber-500 text-slate-950 font-extrabold font-mono rounded-md px-1.5 py-0.5 text-xs shadow-md border border-amber-300 leading-none z-10">
-          {pips}
-        </div>
-      )}
+        // Safeguard against "Block 0" or blank values
+        const displayValue = roll.value > 0 ? roll.value : '';
+
+        return (
+          <div
+            key={idx}
+            className="flex flex-col items-center gap-1 cursor-pointer group"
+            onClick={() => onDieClick && onDieClick(idx)}
+          >
+            {/* Die Box with Color-Coded Border */}
+            <div
+              className={cn(
+                'relative w-16 h-16 rounded-xl border-4 bg-slate-900 flex items-center justify-center transition-all duration-200 shadow-lg',
+                borderColor,
+                isSelected && 'ring-4 ring-yellow-400 scale-105',
+                'group-hover:scale-105'
+              )}
+            >
+              {/* Image / Face Icon */}
+              {roll.faceImage ? (
+                <img
+                  src={roll.faceImage}
+                  alt={roll.type}
+                  className="w-full h-full object-cover rounded-lg"
+                />
+              ) : (
+                <span className="font-display font-bold text-lg text-white uppercase">
+                  {roll.type}
+                </span>
+              )}
+
+              {/* Pip Badge (Hides if 0 to avoid "Block 0") */}
+              {displayValue !== '' && (
+                <div className="absolute bottom-1 right-1 bg-amber-500 text-slate-950 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center shadow">
+                  {displayValue}
+                </div>
+              )}
+            </div>
+
+            {/* Position Label below the die */}
+            <span className="text-xs font-mono font-semibold tracking-wider text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">
+              {label} {displayValue ? `(${displayValue}${roll.type[0].toUpperCase()})` : ''}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 };
